@@ -26,6 +26,7 @@
 #include "../src2/applicationlauncher.h"
 #include "../src2/statusbarmodel.h"
 #include "../src2/applicationmodel.h"
+#include "../src2/usermanagement.h"
 
 void noOutput(QtMsgType, const QMessageLogContext &, const QString &)
 {
@@ -62,7 +63,6 @@ int main(int argc, char *argv[])
     qmlRegisterType<StatusBarModel>("HomeScreen", 1, 0, "StatusBarModel");
 
     QQmlApplicationEngine engine;
-
     LayoutHandler* layoutHandler = new LayoutHandler();
 
     HomeScreenControlInterface* hsci = new HomeScreenControlInterface();
@@ -75,6 +75,10 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("layoutHandler", layoutHandler);
 
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
-
+    QObject *home = engine.rootObjects().first()->findChild<QObject *>("Home");
+    QObject *shortcutArea = engine.rootObjects().first()->findChild<QObject *>("ShortcutArea");
+    QObject *statusArea = engine.rootObjects().first()->findChild<QObject *>("StatusArea");
+    UserManagement userManagement(home, shortcutArea, statusArea);
+    Q_UNUSED(userManagement);
     return a.exec();
 }
