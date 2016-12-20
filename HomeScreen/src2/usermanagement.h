@@ -36,6 +36,7 @@ struct User {
     QString first_name;
     QString keytoken;
     QStringList graphActions;
+    QString policy;
 };
 
 class UserManagement : public QObject
