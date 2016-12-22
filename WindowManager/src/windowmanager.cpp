@@ -33,10 +33,10 @@
 
 #define WINDOWMANAGER_LAYER_NUM 4
 
-#define WINDOWMANAGER_LAYER_ID_SHIFT 22
+#define WINDOWMANAGER_SURFACE_ID_SHIFT 22
 
-// the HomeScreen app has to have the surface id 1000
-#define WINDOWMANAGER_HOMESCREEN_MAIN_SURFACE_ID 1000
+// the HomeScreen app has to have the surface id 4194304
+#define WINDOWMANAGER_HOMESCREEN_MAIN_SURFACE_ID (1 << WINDOWMANAGER_SURFACE_ID_SHIFT)
 
 // Quick hack for scaling layer to fit non-FHD(1920x1080) screen
 //  * source rect of layer should be 1920x1080
@@ -51,14 +51,14 @@ void* WindowManager::myThis = 0;
 WindowManager::WindowManager(int displayId, QObject *parent) :
     QObject(parent),
     m_layouts(),
-    //    m_appSurfaces(),
     mp_layoutAreaToSurfaceIdAssignment(0),
     m_currentLayout(-1),
     m_screenId(displayId),
     m_screenWidth(0),
     m_screenHeight(0)
 #ifdef HAVE_IVI_LAYERMANAGEMENT_API
-  ,
+    ,
+    m_appSurfaces(),
     m_appLayers(),
     m_pending_to_show(-1)
 #endif
@@ -96,7 +96,6 @@ void WindowManager::start()
 
     createNewLayer(WINDOWMANAGER_LAYER_POPUP);
     createNewLayer(WINDOWMANAGER_LAYER_HOMESCREEN_OVERLAY);
-//  createNewLayer(WINDOWMANAGER_LAYER_APPLICATIONS);
     createNewLayer(WINDOWMANAGER_LAYER_HOMESCREEN);
 
     ilm_registerNotification(WindowManager::notificationFunc_static, this);
@@ -125,9 +124,9 @@ int WindowManager::getLayerRenderOrder(t_ilm_layer id_array[])
 {
     int i, j;
 
-    for (i = WINDOWMANAGER_LAYER_NUM - 1, j = 0; i >= 0; i--, j++) {
+    for (i = WINDOWMANAGER_LAYER_NUM - 1, j = 0; i >= 0; i--) {
         if (m_showLayers[i] != 0) {
-            id_array[j] = m_showLayers[i];
+            id_array[j++] = m_showLayers[i];
         }
     }
 
@@ -170,8 +169,7 @@ void WindowManager::createNewLayer(int layerId)
     ilm_layerCreateWithDimension(&newLayerId,
                                     WINDOWMANAGER_HOMESCREEN_WIDTH,
                                     WINDOWMANAGER_HOMESCREEN_HEIGHT);
-    ilm_layerSetOpacity(newLayerId, 1.0);
-    ilm_layerSetVisibility(newLayerId, ILM_TRUE);
+    ilm_commitChanges();
     ilm_layerSetSourceRectangle(newLayerId,
                                     0,
                                     0,
@@ -182,7 +180,9 @@ void WindowManager::createNewLayer(int layerId)
                                     0,
                                     m_screenWidth,
                                     m_screenHeight);
-
+    ilm_commitChanges();
+    ilm_layerSetOpacity(newLayerId, 1.0);
+    ilm_layerSetVisibility(newLayerId, ILM_TRUE);
     ilm_commitChanges();
 }
 
@@ -196,35 +196,53 @@ t_ilm_layer WindowManager::getAppLayerID(pid_t pid)
     return layer_id;
 }
 
-void WindowManager::addSurfaceToAppLayer(int surfaceId)
+void WindowManager::addSurface(t_ilm_surface surfaceId)
 {
     struct ilmSurfaceProperties surfaceProperties;
-    t_ilm_layer layer_id;
-    int found = 0;
     pid_t pid;
-
-    qDebug("-=[addSurfaceToAppLayer]=-");
-    qDebug("  surfaceId %d", surfaceId);
 
     ilm_getPropertiesOfSurface(surfaceId, &surfaceProperties);
     pid = surfaceProperties.creatorPid;
 
-    if (pid < 0) {
-        /* No process */
-        qDebug("addSurfaceToAppLayer(%d) got pid == -1", surfaceId);
-        return;
+    QMap<pid_t, t_ilm_surface>::const_iterator i = m_appSurfaces.find(pid);
+    if (i != m_appSurfaces.end() && i.value() == 0) {
+        /* Only the 1st surface is handled by Window Manager */
+        qDebug("This surface (%d) is 1st one for app (%d)", surfaceId, pid);
+        /* update surface id */
+        m_appSurfaces.insert(pid, surfaceId);
+
+        /* this surface should be handled by WindowManager */
+        ilm_surfaceAddNotification(surfaceId, surfaceCallbackFunction_static);
+        ilm_commitChanges();
     }
+}
+
+t_ilm_layer WindowManager::addSurfaceToAppLayer(pid_t pid, int surfaceId)
+{
+    struct ilmSurfaceProperties surfaceProperties;
+    t_ilm_layer layer_id;
+    int found = 0;
+
+    qDebug("-=[addSurfaceToAppLayer]=-");
+    qDebug("  surfaceId %d", surfaceId);
+
+    if (pid < 0)
+        return 0;
 
     QMap<pid_t, t_ilm_layer>::const_iterator i = m_appLayers.find(pid);
     if (i == m_appLayers.end()) {
         qDebug("No layer found, create new for app(pid=%d)", pid);
 
         /* not found, create new one */
-        t_ilm_layer layer_id = getAppLayerID(pid);
+        layer_id = getAppLayerID(pid);
 
         createNewLayer(layer_id);
         m_appLayers.insert(pid, layer_id);
+    } else {
+        layer_id = i.value();
     }
+
+    return layer_id;
 }
 
 void WindowManager::addSurfaceToLayer(int surfaceId, int layerId)
@@ -235,34 +253,9 @@ void WindowManager::addSurfaceToLayer(int surfaceId, int layerId)
 
     if (layerId == WINDOWMANAGER_LAYER_HOMESCREEN)
     {
-        struct ilmSurfaceProperties surfaceProperties;
-        ilm_getPropertiesOfSurface(surfaceId, &surfaceProperties);
-
-        // homescreen app always fullscreen in the back
-        ilm_surfaceSetDestinationRectangle(surfaceId, 0, 0,
-                                           WINDOWMANAGER_HOMESCREEN_WIDTH,
-                                           WINDOWMANAGER_HOMESCREEN_HEIGHT);
-        //ilm_surfaceSetSourceRectangle(surfaceId, 0, 0, m_screenWidth, m_screenHeight);
-        ilm_surfaceSetOpacity(surfaceId, 1.0);
-        ilm_surfaceSetVisibility(surfaceId, ILM_TRUE);
-
-        ilm_layerAddSurface(layerId, surfaceId);
+      ilm_layerAddSurface(layerId, surfaceId);
     }
-#if 0
-    if (layerId == WINDOWMANAGER_LAYER_APPLICATIONS)
-    {
-        struct ilmSurfaceProperties surfaceProperties;
-        ilm_getPropertiesOfSurface(surfaceId, &surfaceProperties);
-
-        //ilm_surfaceSetDestinationRectangle(surfaceId, 0, 0, surfaceProperties.origSourceWidth, surfaceProperties.origSourceHeight);
-        //ilm_surfaceSetSourceRectangle(surfaceId, 0, 0, surfaceProperties.origSourceWidth, surfaceProperties.origSourceHeight);
-        //ilm_surfaceSetOpacity(surfaceId, 0.0);
-        //ilm_surfaceSetVisibility(surfaceId, ILM_FALSE);
-
-        ilm_layerAddSurface(layerId, surfaceId);
-    }
-#endif
-    if (layerId == WINDOWMANAGER_LAYER_HOMESCREEN_OVERLAY)
+    else if (layerId == WINDOWMANAGER_LAYER_HOMESCREEN_OVERLAY)
     {
         struct ilmSurfaceProperties surfaceProperties;
         ilm_getPropertiesOfSurface(surfaceId, &surfaceProperties);
@@ -274,8 +267,7 @@ void WindowManager::addSurfaceToLayer(int surfaceId, int layerId)
 
         ilm_layerAddSurface(layerId, surfaceId);
     }
-
-    if (layerId == WINDOWMANAGER_LAYER_POPUP)
+    else if (layerId == WINDOWMANAGER_LAYER_POPUP)
     {
         struct ilmSurfaceProperties surfaceProperties;
         ilm_getPropertiesOfSurface(surfaceId, &surfaceProperties);
@@ -286,11 +278,52 @@ void WindowManager::addSurfaceToLayer(int surfaceId, int layerId)
         //ilm_surfaceSetVisibility(surfaceId, ILM_FALSE);
 
         ilm_layerAddSurface(layerId, surfaceId);
+    } else {
+        return;
     }
 
     ilm_commitChanges();
 }
 
+void WindowManager::configureHomeScreenMainSurface(t_ilm_surface surface, t_ilm_int width, t_ilm_int height)
+{
+    // homescreen app always fullscreen in the back
+    ilm_surfaceSetDestinationRectangle(surface, 0, 0,
+                                       WINDOWMANAGER_HOMESCREEN_WIDTH,
+                                       WINDOWMANAGER_HOMESCREEN_HEIGHT);
+    ilm_surfaceSetSourceRectangle(surface, 0, 0, width, height);
+    ilm_surfaceSetOpacity(surface, 1.0);
+    ilm_surfaceSetVisibility(surface, ILM_TRUE);
+
+    ilm_commitChanges();
+}
+
+void WindowManager::configureAppSurface(pid_t pid, t_ilm_surface surface, t_ilm_int width, t_ilm_int height)
+{
+    /* Dirty hack! cut & paste from HomeScreen/src/layouthandler.cpp */
+    const int SCREEN_WIDTH = 1080;
+    const int SCREEN_HEIGHT = 1920;
+
+    const int TOPAREA_HEIGHT = 218;
+    const int TOPAREA_WIDTH = SCREEN_WIDTH;
+    const int TOPAREA_X = 0;
+    const int TOPAREA_Y = 0;
+    const int MEDIAAREA_HEIGHT = 215;
+    const int MEDIAAREA_WIDTH = SCREEN_WIDTH;
+    const int MEDIAAREA_X = 0;
+    const int MEDIAAREA_Y = SCREEN_HEIGHT - MEDIAAREA_HEIGHT;
+
+    ilm_surfaceSetDestinationRectangle(surface,
+                                       0,
+                                       TOPAREA_HEIGHT,
+                                       SCREEN_WIDTH,
+                                       SCREEN_HEIGHT - TOPAREA_HEIGHT - MEDIAAREA_HEIGHT);
+    ilm_surfaceSetSourceRectangle(surface, 0, 0, width, height);
+    ilm_surfaceSetOpacity(surface, 1.0);
+    ilm_surfaceSetVisibility(surface, ILM_TRUE); /* Hack to avoid blank screen when switch apps */
+
+    ilm_commitChanges();
+}
 #endif
 
 void WindowManager::updateScreen()
@@ -368,11 +401,14 @@ void WindowManager::updateScreen()
 #endif
 #ifdef HAVE_IVI_LAYERMANAGEMENT_API
     if (m_pending_to_show != -1) {
+        qDebug("show pending app (%d)", m_pending_to_show);
         showAppLayer(m_pending_to_show);
     } else {
         // display layer render order
         t_ilm_layer renderOrder[WINDOWMANAGER_LAYER_NUM];
         int num_layers = getLayerRenderOrder(renderOrder);
+
+        qDebug("Screen render order %d, %d layers", m_screenId, num_layers);
         ilm_displaySetRenderOrder(m_screenId, renderOrder, num_layers);
         ilm_commitChanges();
     }
@@ -392,26 +428,15 @@ void WindowManager::notificationFunc_non_static(ilmObjectType object,
 
         if (created)
         {
-            qDebug("Surface created, ID: %d", id);
-            ilm_getPropertiesOfSurface(id, &surfaceProperties);
-            qDebug("  origSourceWidth : %d", surfaceProperties.origSourceWidth);
-            qDebug("  origSourceHeight: %d", surfaceProperties.origSourceHeight);
-
             if (WINDOWMANAGER_HOMESCREEN_MAIN_SURFACE_ID == id)
             {
-                qDebug("HomeScreen app detected");
-                addSurfaceToLayer(id, WINDOWMANAGER_LAYER_HOMESCREEN);
-                updateScreen();
+                ilm_surfaceAddNotification(id, surfaceCallbackFunction_static);
+                ilm_commitChanges();
             }
             else
             {
-                addSurfaceToAppLayer(id);
-                //addSurfaceToLayer(id, WINDOWMANAGER_LAYER_APPLICATIONS);
-                //m_appSurfaces.append(id);
+                addSurface(id);
             }
-            ilm_surfaceAddNotification(id, surfaceCallbackFunction_static);
-
-            ilm_commitChanges();
         }
         else
         {
@@ -448,6 +473,7 @@ void WindowManager::surfaceCallbackFunction_non_static(t_ilm_surface surface,
     {
         qDebug("ILM_NOTIFICATION_VISIBILITY");
         surfaceVisibilityChanged(surface, surfaceProperties->visibility);
+        updateScreen();
     }
     if (ILM_NOTIFICATION_OPACITY & mask)
     {
@@ -468,44 +494,6 @@ void WindowManager::surfaceCallbackFunction_non_static(t_ilm_surface surface,
     if (ILM_NOTIFICATION_CONTENT_AVAILABLE & mask)
     {
         qDebug("ILM_NOTIFICATION_CONTENT_AVAILABLE");
-        /* add surface to layer for the application */
-
-        ilmErrorTypes result;
-        pid_t pid = surfaceProperties->creatorPid;
-
-        QMap<pid_t, t_ilm_layer>::const_iterator i = m_appLayers.find(pid);
-        if (i != m_appLayers.end()) {
-            t_ilm_layer layer_id = m_appLayers.value(pid);
-
-            result = ilm_layerAddSurface(layer_id, surface);
-
-            if (result != ILM_SUCCESS) {
-                qDebug("ilm_layerAddSurface(%d,%d) failed.", layer_id, surface);
-            }
-
-            /* Dirty hack! cut & paste from HomeScreen/src/layouthandler.cpp */
-            const int SCREEN_WIDTH = 1080;
-            const int SCREEN_HEIGHT = 1920;
-
-            const int TOPAREA_HEIGHT = 218;
-            const int TOPAREA_WIDTH = SCREEN_WIDTH;
-            const int TOPAREA_X = 0;
-            const int TOPAREA_Y = 0;
-            const int MEDIAAREA_HEIGHT = 215;
-            const int MEDIAAREA_WIDTH = SCREEN_WIDTH;
-            const int MEDIAAREA_X = 0;
-            const int MEDIAAREA_Y = SCREEN_HEIGHT - MEDIAAREA_HEIGHT;
-
-            ilm_surfaceSetDestinationRectangle(surface,
-                                               0,
-                                               TOPAREA_HEIGHT,
-                                               SCREEN_WIDTH,
-                                               SCREEN_HEIGHT - TOPAREA_HEIGHT - MEDIAAREA_HEIGHT);
-
-            ilm_commitChanges();
-        } else {
-            qDebug("No layer for application(pid=%d)", surfaceProperties->creatorPid);
-        }
     }
     if (ILM_NOTIFICATION_CONTENT_REMOVED & mask)
     {
@@ -513,8 +501,6 @@ void WindowManager::surfaceCallbackFunction_non_static(t_ilm_surface surface,
 
         /* application being down */
         m_appLayers.remove(surfaceProperties->creatorPid);
-
-        updateScreen();
     }
     if (ILM_NOTIFICATION_CONFIGURED & mask)
     {
@@ -523,14 +509,26 @@ void WindowManager::surfaceCallbackFunction_non_static(t_ilm_surface surface,
         qDebug("    surfaceProperties.origSourceWidth: %d", surfaceProperties->origSourceWidth);
         qDebug("    surfaceProperties.origSourceHeight: %d", surfaceProperties->origSourceHeight);
 
-        ilm_surfaceSetSourceRectangle(surface,
-                                      0,
-                                      0,
-                                      surfaceProperties->origSourceWidth,
-                                      surfaceProperties->origSourceHeight);
+        if (surface == WINDOWMANAGER_HOMESCREEN_MAIN_SURFACE_ID) {
+            addSurfaceToLayer(surface, WINDOWMANAGER_LAYER_HOMESCREEN);
+            configureHomeScreenMainSurface(surface, surfaceProperties->origSourceWidth, surfaceProperties->origSourceHeight);
+        } else {
+            ilmErrorTypes result;
+            pid_t pid = surfaceProperties->creatorPid;
+            t_ilm_layer layer = addSurfaceToAppLayer(pid, surface);
 
-        ilm_surfaceSetVisibility(surface, ILM_TRUE);
+            if (layer != 0) {
+                configureAppSurface(pid, surface,
+                                    surfaceProperties->origSourceWidth,
+                                    surfaceProperties->origSourceHeight);
 
+                result = ilm_layerAddSurface(layer, surface);
+                if (result != ILM_SUCCESS) {
+                    qDebug("ilm_layerAddSurface(%d,%d) failed.", layer, surface);
+                }
+                ilm_commitChanges();
+            }
+        }
         updateScreen();
     }
 }
@@ -698,14 +696,9 @@ void WindowManager::hideLayer(int layer)
     if (layer >= 0 && layer < WINDOWMANAGER_LAYER_NUM) {
         /* hide target layer */
         m_showLayers[layer] = 0;
-
-        if (layer == WINDOWMANAGER_LAYER_APPLICATIONS) {
+        if (layer == 2) {
             /* clear pending flag */
             m_pending_to_show = -1;
-        } else if (m_pending_to_show != -1) {
-            /* there is a pending application to show */
-            showAppLayer(m_pending_to_show);
-            return;
         }
 
         t_ilm_layer renderOrder[WINDOWMANAGER_LAYER_NUM];
@@ -804,22 +797,27 @@ void WindowManager::showAppLayer(int pid)
         return;
     }
 #ifdef HAVE_IVI_LAYERMANAGEMENT_API
-
     /* clear pending flag */
     m_pending_to_show = -1;
 
     /* search layer id for application to show */
     QMap<pid_t, t_ilm_layer>::const_iterator i = m_appLayers.find(pid);
+    QMap<pid_t, t_ilm_surface>::const_iterator j = m_appSurfaces.find(pid);
 
     if (i != m_appLayers.end()) {
-        m_showLayers[2] = m_appLayers.value(pid);
+        m_showLayers[2] = i.value();
         qDebug("Found layer(%d) to show for app(pid=%d)", m_showLayers[2], pid);
     } else {
+        /* check if this app is registered */
+        if (j == m_appSurfaces.end()) {
+            qDebug("New app %d", pid);
+            m_appSurfaces.insert(pid, 0); /* register pid only so far */
+        }
+
         /* Probably app layer hasn't been made yet */
         m_pending_to_show = pid;
         /* hide current app once, back to default screen */
         m_showLayers[2] = 0;
-
         qDebug("No layer to show for app(pid=%d)", pid);
     }
     t_ilm_layer renderOrder[WINDOWMANAGER_LAYER_NUM];

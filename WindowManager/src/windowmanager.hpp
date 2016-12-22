@@ -23,7 +23,6 @@
 
 #include "windowmanager_adaptor.h"
 
-
 #ifdef HAVE_IVI_LAYERMANAGEMENT_API
 #include <ilm/ilm_control.h>
 #endif
@@ -51,6 +50,7 @@ private:
 
 #ifdef HAVE_IVI_LAYERMANAGEMENT_API
     t_ilm_layer* m_showLayers;
+    QMap<pid_t, t_ilm_surface> m_appSurfaces;
     QMap<pid_t, t_ilm_layer> m_appLayers;
     int getLayerRenderOrder(t_ilm_layer* id_array);
 
@@ -60,8 +60,12 @@ private:
 
     pid_t m_pending_to_show;
 
-    void addSurfaceToAppLayer(const int surfaceID);
+    void addSurface(const t_ilm_surface surfaceId);
+    t_ilm_layer addSurfaceToAppLayer(pid_t pid, const int surfaceId);
     void addSurfaceToLayer(const int surfaceId, const int layerId);
+
+    void configureHomeScreenMainSurface(const t_ilm_surface surface, const t_ilm_int width, const t_ilm_int height);
+    void configureAppSurface(const pid_t pid, const t_ilm_surface surface, const t_ilm_int width, const t_ilm_int height);
 #endif
     void updateScreen();
 
@@ -118,6 +122,5 @@ public Q_SLOTS: // METHODS
 Q_SIGNALS: // SIGNALS
     void surfaceVisibilityChanged(int surfaceId, bool visible);
 };
-
 
 #endif // WINDOWMANAGER_HPP
