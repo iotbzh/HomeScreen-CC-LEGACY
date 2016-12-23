@@ -1,108 +1,47 @@
 This project contains:
 
 HomeScreen: AGL Home Screen reference implementation
+HomeScreenAppFrameworkBinderAGL: Binder for the AGL application framework
 HomeScreenSimulator: AGL Home Screen Simulator for development
 InputEventManager: AGL Input event manager
-interfaces: library with the D-Bus interfaces
+interfaces: the D-Bus interface introspections
+libhomescreen: HomeScreen API C++ shared library
 SampleAppTimeDate: AGL Sample Application for Home Screen Statusbar
-HomeScreenAppFrameworkBinderTizen: Binder for the TIZEN application framework
+SampleHomeScreenInterfaceApp: sample application to show how to use libhomescreen
+WindowManager: AGL WindowManager reference implementation
 
 AGL repo for source code:
-https://gerrit.automotivelinux.org/gerrit/#/admin/projects/staging/HomeScreen
+https://gerrit.automotivelinux.org/gerrit/gitweb?p=staging%2FHomeScreen.git
 
 AGL repo for bitbake recipe:
-https://gerrit.automotivelinux.org/gerrit/#/admin/projects/AGL/meta-agl-demo/recipes-demo-hmi/HomeScreen/HomeScreen_?.bb
+https://gerrit.automotivelinux.org/gerrit/gitweb?p=AGL/meta-agl-demo.git;a=blob;f=recipes-demo-hmi/homescreen/homescreen_git.bb
 
 
-Instructions for running on porter board
+
+
+Quickstart:
+
+Instructions for building HomeScreen app
 ----------------------------------------
 
-Add "HomeScreen" to your image recipe.
-Right now, HomeScreen depends on the TIZEN application manager, because the HomeScreenAppFrameworkBinderTizen makes use of it.
-So also add this to your image recipe:
-"
-    tizen-platform-wrapper \
-    tizen-platform-config \
-    xdgmime \
-    libdlog \
-    dlogutil \
-    libiri \
-    \
-    smack \
-    libprivilege-control \
-    libslp-db-util \
-    \
-    vconf \
-    capi-base-common \
-    ail \
-    \
-    sensor \
-    libsf-common \
-    \
-    iniparser \
-    app-svc \
-    heynoti \
-    notification \
-    app-core-efl \
-    app-core-common \
-    capi-system-info \
-    \
-    pkgmgr-info \
-    librua \
-    bundle \
-    app-checker \
-    \
-    libcom-core \
-    privacy-manager-server \
-    pkgmgr \
-    pkgmgr-info \
-    pkgmgr-info-parser \
-    aul \
-    aul-test \
-    \
-    dlt-daemon \
-    dlt-daemon-systemd \
-    \
-    amhelloworld \
-    pkgmgr-first-setup-service \
-"
+The HomeScreen app is part of the 
+packagegroup-agl-demo-platform
+packagegroup.
+
+This also includes the following apps:
+- HomeScreenAppFrameworkBinderAGL
+- InputEventManager
+- SampleAppTimeDate
+- SampleHomeScreenInterfaceApp
+- WindowManager
+
+And the library
+- libhomescreen
 
 
-All "HomeScreen" applications can be found in /opt/AGL/HomeScreen.
+To build all the above, follow the instrucions on the AGL
+documentation website:
+http://docs.automotivelinux.org/docs/getting_started/en/dev/reference/source-code.html#features-supported-by-aglsetup
 
-Make sure, weston is using the IVI shell extension:
-
-/etc/xdg/weston/weston.ini:
-
-[core]
-shell=ivi-shell.so
-
-[ivi-shell]
-ivi-module=ivi-controller.so
-ivi-shell-user-interface=/usr/lib/weston/weston-ivi-shell-user-interface
-
-[output]
-name=HDMI-A-1
-transform=270
-
-
-
-If you want to use the TIZEN application manager to launch apps, you need to execute HomeScreen app with the user "aglglobalapp":
-
-Therefore you need to change the owner of the weston socket:
-
-chown aglglobalapp:aglglobalapp /tmp/wayland-0
-
-P.S.: the path may also something likle /run/user/0, depending on the XDG_RUNTIME_DIR.
-
-If not already stared, launch D-Bus:
-export `dbus-launch`
-
-Now you can start the HomeScreen apps:
-cd /opt/AGL/HomeScreen
-./WindowManager &
-./InputEventManager &
-./HomeScreenAppFrameworkBinderTizen &
-./HomeScreen &
-
-
+Please activate the "agl-demo" feature when running the aglsetup script:
+http://docs.automotivelinux.org/docs/getting_started/en/dev/reference/source-code.html#features-supported-by-aglsetup
