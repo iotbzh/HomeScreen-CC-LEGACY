@@ -54,7 +54,7 @@ Window {
                 Layout.fillHeight: true
                 Layout.preferredHeight: 1920 - 218 - 215
 
-                visible: true
+                visible: false
             }
 
             Home {
@@ -62,7 +62,7 @@ Window {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredHeight: 1920 - 218 - 215
-                visible: false
+                visible: true
             }
 
             MediaArea {
