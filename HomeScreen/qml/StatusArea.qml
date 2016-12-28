@@ -42,7 +42,7 @@ Item {
                 anchors.fill: parent
                 anchors.margins: 40
                 spacing: 0
-                Label {
+                Text {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     text: Qt.formatDate(now, 'dddd').toUpperCase()
@@ -59,7 +59,7 @@ Item {
 //                        z: -1
 //                    }
                 }
-                Label {
+                Text {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     text: Qt.formatTime(now, 'h:mm ap').toUpperCase()
@@ -76,7 +76,7 @@ Item {
                     Image {
                         source: './images/Weather/WeatherIcons_Rain-01.png'
                     }
-                    Label {
+                    Text {
                         text: '64°F'
                         color: 'white'
                         font.family: 'Helvetica'
