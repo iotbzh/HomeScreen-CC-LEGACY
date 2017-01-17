@@ -18,10 +18,6 @@ This applications are already available and were presented at CES 2017.
 
 ![AGL Phone](pictures/phone.png)
 
-## MediaPlayer
-
-![AGL MediaPlayer](pictures/multimedia.png)
-
 ## Dashboard
 
 ![AGL Dashboard](pictures/dashboard.png)
