@@ -56,14 +56,24 @@ Item {
     }
     Image {
         id: visa
-        width: 200
-        height: 124
+        sourceSize.width: 170
         anchors.right: parent.right
         anchors.rightMargin: 20
         anchors.top: parent.top
         anchors.topMargin: 20
         source: './images/visa.png'
         visible: false
+        MouseArea {
+            anchors.fill: parent
+            onPressed: {
+                n1.target = visa
+                n1.start()
+            }
+            onReleased: {
+                n2.target = visa
+                n2.start()
+            }
+        }
         Label {
             id: cardNumber
             anchors.top: parent.bottom
@@ -75,6 +85,42 @@ Item {
             font.pixelSize: 20
             font.family: "Roboto"
         }
+    }
+    Image {
+        id: licence
+        sourceSize.width: 170
+        anchors.right: visa.right
+        anchors.top: visa.bottom
+        anchors.topMargin: 50
+        visible: false
+        MouseArea {
+            anchors.fill: parent
+            onPressed: {
+                n1.target = licence
+                n1.start()
+            }
+            onReleased: {
+                n2.target = licence
+                n2.start()
+            }
+        }
+
+    }
+    NumberAnimation {
+        id: n1
+        property: "sourceSize.width"
+        duration: 800
+        to: parent.width * .8
+        easing.type: Easing.InOutQuad
+        onStarted: target.z = 100
+    }
+    NumberAnimation {
+        id: n2
+        property: "sourceSize.width"
+        duration: 300
+        to: 170
+        easing.type: Easing.InOutQuad
+        onStopped: target.z = 0
     }
     Item {
         id: hello
@@ -131,8 +177,17 @@ Item {
 
     function showVisa(show, num) {
         visa.visible = show
-        cardNumber.text = num;
+        cardNumber.text = num
     }
+    function showLicence(show, licenceImage) {
+        if(show) {
+            licence.source = licenceImage
+            licence.visible = true
+        } else {
+            licence.visible = false
+        }
+    }
+
     function changeFlag(flagImage) {
         flagLanguage.source = flagImage
     }

@@ -29,5 +29,8 @@
         <file>View Online.png</file>
         <file>B14-60.png</file>
         <file>B14-90.png</file>
+        <file>DL_Alain.png</file>
+        <file>DL_Olivier.png</file>
+        <file>DL_Philippe.png</file>
     </qresource>
 </RCC>

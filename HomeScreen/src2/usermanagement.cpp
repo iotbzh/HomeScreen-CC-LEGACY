@@ -37,6 +37,7 @@ void UserManagement::slot_disconnect()
     QMetaObject::invokeMethod(statusArea, "languageChanged", Q_ARG(QVariant, "en"));
     QMetaObject::invokeMethod(home, "showSign90", Q_ARG(QVariant, false), Q_ARG(QVariant, "en"));
     QMetaObject::invokeMethod(home, "showVisa", Q_ARG(QVariant, false), Q_ARG(QVariant, ""));
+    QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, false), Q_ARG(QVariant, ""));
     QMetaObject::invokeMethod(home, "changeFlag", Q_ARG(QVariant, "./images/us_flag.png"));
     QMetaObject::invokeMethod(home, "setUser", Q_ARG(QVariant, ""), Q_ARG(QVariant, ""));
     QVariantList list;
@@ -78,6 +79,15 @@ void UserManagement::setUser(const User &user)
     const QString welcome = QString("%1").arg(user.graphPreferredLanguage == "fr" ? "Bonjour " : "Hello") + " ";
     QMetaObject::invokeMethod(home, "showHello", Q_ARG(QVariant, welcome + user.first_name));
     QMetaObject::invokeMethod(home, "changeFlag", Q_ARG(QVariant, user.graphPreferredLanguage == "fr" ? "./images/french_flag.png" : "./images/us_flag.png"));
+    if(user.name.toLower() == "philippea")
+        QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, true), Q_ARG(QVariant, "./images/DL_Philippe.png"));
+    else if(user.name.toLower() == "alainp")
+        QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, true), Q_ARG(QVariant, "./images/DL_Alain.png"));
+    else if(user.name.toLower() == "olivierc ")
+        QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, true), Q_ARG(QVariant, "./images/DL_Olivier.png"));
+    else
+        QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, false), Q_ARG(QVariant, ""));
+
 }
 void UserManagement::slot_turnOffRed()
 {
@@ -272,7 +282,7 @@ void UserManagement::processTextMessage(QString message)
                               ":\"19\",\"ccExpMonth\":\"01\",\"description\":\"Original description\",\"groups\":[],\"last_name\":\""
                               "Jensen\",\"ccNumber\":\"111-2343-1121-111\",\"house_identifier\":\"ForgeRock\",\"phone\":\""
                               "+1 408 555 1862\",\"name\":\"bjensen\",\"state\":\"CA\",\"common_name\":\"Barbara Jensen\",\"fax\":\""
-                              "+1 408 555 1862\",\"postal_code\":\"94105\",\"first_name\":\"José\",\"keytoken\":\"a123456\",\"graphPolicies\":\"Maintainer\"}";
+                              "+1 408 555 1862\",\"postal_code\":\"94105\",\"first_name\":\"Philippe\",\"keytoken\":\"a123456\",\"graphPolicies\":\"Maintainer\"}";
     QString clientDetails = clientDetails_1;
     if(sequence % 2 == 1)
         clientDetails = clientDetails_2;
