@@ -56,7 +56,7 @@ void UserManagement::setUser(const User &user)
     QMetaObject::invokeMethod(home, "languageChanged");
     QMetaObject::invokeMethod(shortcutArea, "languageChanged", Q_ARG(QVariant, user.graphPreferredLanguage));
     QMetaObject::invokeMethod(statusArea, "languageChanged", Q_ARG(QVariant, user.graphPreferredLanguage));
-    QMetaObject::invokeMethod(home, "showSign90", Q_ARG(QVariant, !user.graphActions.contains("Exceed 100 Kph")), Q_ARG(QVariant, user.graphPreferredLanguage));
+    QMetaObject::invokeMethod(home, "showSign90", Q_ARG(QVariant, !user.graphActions.contains("Exceed 90 Kph")), Q_ARG(QVariant, user.graphPreferredLanguage));
     QStringList t;
     foreach(const QString &s, user.graphActions) {
         if(!s.contains("Exceed"))
@@ -83,7 +83,7 @@ void UserManagement::setUser(const User &user)
         QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, true), Q_ARG(QVariant, "./images/DL_Philippe.png"));
     else if(user.name.toLower() == "alainp")
         QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, true), Q_ARG(QVariant, "./images/DL_Alain.png"));
-    else if(user.name.toLower() == "olivierc ")
+    else if(user.name.toLower() == "olivierc")
         QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, true), Q_ARG(QVariant, "./images/DL_Olivier.png"));
     else
         QMetaObject::invokeMethod(home, "showLicence", Q_ARG(QVariant, false), Q_ARG(QVariant, ""));
